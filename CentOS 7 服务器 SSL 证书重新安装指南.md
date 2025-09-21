@@ -132,6 +132,106 @@ openssl s_client -connect telegram8.org:443 -servername telegram8.org 2>/dev/nul
 curl -I https://telegram8.org
 ```
 
+### 8.1 查看SSL证书有效期（详细方法）
+
+#### 方法一：查看本地证书文件
+```bash
+# 查看证书详细信息（包含有效期）
+openssl x509 -in /www/server/panel/vhost/cert/telegram8.org/fullchain.pem -text -noout
+
+# 仅查看有效期
+openssl x509 -in /www/server/panel/vhost/cert/telegram8.org/fullchain.pem -noout -dates
+
+# 查看证书剩余有效天数
+openssl x509 -in /www/server/panel/vhost/cert/telegram8.org/fullchain.pem -noout -checkend 86400
+```
+
+#### 方法二：通过HTTPS连接查看
+```bash
+# 连接服务器并查看证书信息
+echo | openssl s_client -connect telegram8.org:443 -servername telegram8.org 2>/dev/null | openssl x509 -noout -dates
+
+# 查看证书详细信息
+echo | openssl s_client -connect telegram8.org:443 -servername telegram8.org 2>/dev/null | openssl x509 -text -noout
+
+# 检查证书是否即将过期（30天内）
+echo | openssl s_client -connect telegram8.org:443 -servername telegram8.org 2>/dev/null | openssl x509 -noout -checkend 2592000
+```
+
+#### 方法三：使用curl查看证书信息
+```bash
+# 使用curl查看证书有效期
+curl -vI https://telegram8.org 2>&1 | grep -E "(expire|SSL certificate verify)"
+
+# 查看证书链信息
+curl -vI https://telegram8.org 2>&1 | grep -A 20 "SSL connection using"
+```
+
+#### 方法四：使用acme.sh查看证书状态
+```bash
+# 查看acme.sh管理的证书列表
+acme.sh --list
+
+# 查看特定域名的证书信息
+acme.sh --info -d telegram8.org
+
+# 检查证书是否需要续期
+acme.sh --renew -d telegram8.org --dry-run
+```
+
+#### 方法五：创建证书监控脚本
+```bash
+# 创建证书检查脚本
+cat > /root/check_ssl_cert.sh << 'EOF'
+#!/bin/bash
+DOMAIN="telegram8.org"
+CERT_FILE="/www/server/panel/vhost/cert/telegram8.org/fullchain.pem"
+
+echo "=== SSL证书有效期检查 ==="
+echo "域名: $DOMAIN"
+echo "检查时间: $(date)"
+echo ""
+
+# 检查本地证书文件
+if [ -f "$CERT_FILE" ]; then
+    echo "本地证书文件有效期:"
+    openssl x509 -in "$CERT_FILE" -noout -dates
+    echo ""
+    
+    # 检查是否即将过期（30天内）
+    if openssl x509 -in "$CERT_FILE" -noout -checkend 2592000; then
+        echo "✅ 证书有效期正常（30天内不会过期）"
+    else
+        echo "⚠️  警告：证书将在30天内过期！"
+    fi
+else
+    echo "❌ 证书文件不存在: $CERT_FILE"
+fi
+
+echo ""
+
+# 检查在线证书
+echo "在线证书有效期:"
+if echo | openssl s_client -connect "$DOMAIN:443" -servername "$DOMAIN" 2>/dev/null | openssl x509 -noout -dates; then
+    echo "✅ 在线证书检查成功"
+else
+    echo "❌ 无法连接到 $DOMAIN:443"
+fi
+EOF
+
+# 给脚本添加执行权限
+chmod +x /root/check_ssl_cert.sh
+
+# 运行检查脚本
+/root/check_ssl_cert.sh
+```
+
+#### 证书有效期说明
+- **notBefore**: 证书开始生效时间
+- **notAfter**: 证书过期时间
+- **Let's Encrypt证书**: 有效期为90天，需要定期续期
+- **建议检查频率**: 每周检查一次，提前30天续期
+
 ### 9. 设置 Telegram Bot Webhook
 
 ```bash
@@ -174,6 +274,12 @@ acme.sh --list
 2. **socat 依赖**：standalone 模式需要 socat 工具，如果安装失败可使用 webroot 模式
 3. **证书备份**：建议定期备份证书文件
 4. **监控续期**：虽然设置了自动续期，建议定期检查证书状态
+5. **证书有效期监控**：
+   - Let's Encrypt 证书有效期为90天
+   - 建议每周检查一次证书状态
+   - 提前30天进行证书续期
+   - 可使用提供的监控脚本自动化检查
+   - 建议设置邮件或短信提醒
 
 ## 故障排除
 
@@ -202,6 +308,21 @@ curl -I https://telegram8.org
 
 # 检查 SSL 证书
 openssl s_client -connect telegram8.org:443 -servername telegram8.org
+```
+
+### 证书有效期问题
+```bash
+# 检查证书是否过期
+openssl x509 -in /www/server/panel/vhost/cert/telegram8.org/fullchain.pem -noout -checkend 0
+
+# 检查证书剩余天数
+openssl x509 -in /www/server/panel/vhost/cert/telegram8.org/fullchain.pem -noout -checkend 86400
+
+# 强制续期证书
+acme.sh --renew -d telegram8.org --force
+
+# 检查自动续期状态
+crontab -l | grep acme
 ```
 
 ## 完成状态
