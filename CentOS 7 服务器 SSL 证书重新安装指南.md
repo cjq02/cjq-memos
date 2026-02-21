@@ -175,8 +175,12 @@ acme.sh --list
 # 查看特定域名的证书信息
 acme.sh --info -d telegram8.org
 
-# 检查证书是否需要续期
-acme.sh --renew -d telegram8.org --dry-run
+# 查看证书信息（检查是否需要续期）
+acme.sh --info -d telegram8.org
+
+# 注意：某些版本的 acme.sh 不支持 --dry-run 参数
+# 可以使用以下命令检查证书有效期：
+openssl x509 -in /www/server/panel/vhost/cert/telegram8.org/fullchain.pem -noout -dates
 ```
 
 #### 方法五：创建证书监控脚本

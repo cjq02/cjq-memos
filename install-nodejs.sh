@@ -57,9 +57,9 @@ if command -v node &> /dev/null; then
     CURRENT_VERSION=$(node --version)
     echo "✓ Node.js 已安装: $CURRENT_VERSION"
     echo "正在检查并更新到最新的 LTS 版本..."
-    nvm install --lts
-    nvm use --lts
-    nvm alias default node
+        nvm install --lts
+        nvm use --lts
+        nvm alias default node
 else
     echo "正在安装 Node.js LTS 版本..."
     nvm install --lts
@@ -85,7 +85,7 @@ if command -v pnpm &> /dev/null; then
     PNPM_VERSION=$(pnpm --version)
     echo "✓ pnpm 已安装: $PNPM_VERSION"
     echo "正在更新到最新版本..."
-    npm install -g pnpm@latest
+        npm install -g pnpm@latest
 else
     echo "正在安装 pnpm..."
     npm install -g pnpm@latest
@@ -107,8 +107,8 @@ echo "当前目录: $(pwd)"
 # 检查是否存在 package.json，如果存在则安装依赖
 if [ -f "package.json" ]; then
     echo "检测到 package.json，正在运行: pnpm install"
-    echo ""
-    pnpm install
+echo ""
+pnpm install
 else
     echo "⚠ 未检测到 package.json，跳过依赖安装"
 fi
